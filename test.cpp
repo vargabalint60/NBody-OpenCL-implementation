@@ -53,7 +53,7 @@ void move(int i) {
     points.z[i] += points.vz[i]*dt; 
 }
 
-
+//asdasd
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT);
 

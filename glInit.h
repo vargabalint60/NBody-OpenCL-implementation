@@ -7,8 +7,8 @@ double camera_x = 1, camera_y = 2, camera_z = -5;
 double camera_vx = 0, camera_vy  = 0, camera_vz = 0;
 double phi = 0, theta = 2;
 double phi_v = 0, theta_v = 0;
-std::map<char, int> keys{{'w', 0}, {'a', 0}, {'s', 0}, {'d', 0}, 
-                         {'u', 0}, {'l', 0}, {'o', 0}, {'r', 0}}; 
+std::map<char, bool> keys{{'w', false}, {'a', false}, {'s', false}, {'d', false}, 
+                         {'u', false}, {'l', false}, {'o', false}, {'r', false}}; 
 
                         //u,l,o,r represents up, left, down, right keys
 
@@ -16,48 +16,50 @@ void control() {
     camera_vx = 0;
     camera_vy = 0;
     camera_vz = 0;
-    if (keys['w'] == 1 && keys['a'] == 1 || keys['w'] == 1 && keys['d'] ||
-        keys['s'] == 1 && keys['a'] == 1 || keys['s'] == 1 && keys['d']) {
+    phi_v = 0;
+    theta_v = 0;
+    if (keys['w'] && keys['a'] || keys['w'] && keys['d'] ||
+        keys['s'] && keys['a'] || keys['s'] && keys['d']) {
         v = 1/sqrt(2);}
     else {v = 1;}
 
-    if (keys['u'] == 1) {
+    if (keys['u'] && !keys['o']) {
         phi_v = 1;
     }
-    if (keys['o'] == 1) {
+    if (keys['o'] && !keys['u']) {
         phi_v = -1;
     }
-    if (keys['l'] == 1) {
+    if (keys['l'] && !keys['r']) {
         theta_v = -1;
     }
-    if (keys['r'] == 1) {
+    if (keys['r'] && !keys['l']) {
         theta_v = 1;
     }
     phi += phi_v/200;
     theta += theta_v/200;
 
-    if (keys['w'] == 1) {
+    if (keys['w']) {
         camera_vz += sin(theta)*cos(phi);
         camera_vy += sin(phi);
         camera_vx += cos(theta)*cos(phi);
     }
-    if (keys['s'] == 1) {
+    if (keys['s']) {
         camera_vz += -sin(theta)*cos(phi);
         camera_vy += -sin(phi);
         camera_vx += -cos(theta)*cos(phi);
     }
-    if (keys['a'] == 1) {
+    if (keys['a']) {
         camera_vz += -cos(theta)*cos(phi);
         camera_vx += sin(theta)*cos(phi);
     }
-    if (keys['d'] == 1) {
+    if (keys['d']) {
         camera_vz += cos(theta)*cos(phi);
         camera_vx += -sin(theta)*cos(phi);
     }
-    if (keys['e'] == 1) {
+    if (keys['e']) {
         camera_vy += 1;
     }
-    if (keys['q'] == 1) {
+    if (keys['q']) {
         camera_vy -= 1;
     }
     camera_x += v*camera_vx/15;
@@ -98,22 +100,22 @@ void keyStroke(unsigned char c, int x, int y) {
     switch (c)
     {
         case 'w':
-            keys['w'] = 1;
+            keys['w'] = true;
             break;  
         case 's':
-            keys['s'] = 1;
+            keys['s'] = true;
             break;
         case 'e':
-            keys['e'] = 1;
+            keys['e'] = true;
             break;  
         case 'q':
-            keys['q'] = 1; 
+            keys['q'] = true; 
             break;
         case 'a':
-            keys['a'] = 1;
+            keys['a'] = true;
             break;  
         case 'd':
-            keys['d'] = 1;
+            keys['d'] = true;
             break;
     }
 }
@@ -122,22 +124,22 @@ void keyUp(unsigned char c, int x, int y) {
     switch (c)
     {
         case 'w':
-            keys['w'] = 0;
+            keys['w'] = false;
             break;
         case 's':
-            keys['s'] = 0;
+            keys['s'] = false;
             break;
         case 'e':
-            keys['e'] = 0;
+            keys['e'] = false;
             break;  
         case 'q':
-            keys['q'] = 0; 
+            keys['q'] = false; 
             break;
         case 'a':
-            keys['a'] = 0;
+            keys['a'] = false;
             break;  
         case 'd':
-            keys['d'] = 0;
+            keys['d'] = false;
             break;   
  
     }
@@ -147,16 +149,16 @@ void specialKeyStroke(int c, int x, int y) {
     switch (c)
     {
         case GLUT_KEY_UP:
-            phi_v = 1;
+            keys['u'] = true;
             break;
         case GLUT_KEY_DOWN:
-            phi_v = -1;
+            keys['o'] = true;
             break;
         case GLUT_KEY_RIGHT:
-            theta_v = 1;
+            keys['r'] = true;
             break;
         case GLUT_KEY_LEFT:
-            theta_v = -1;
+            keys['l'] = true;
             break;    
     }
 }
@@ -165,16 +167,16 @@ void specialKeyUp(int c, int x, int y) {
     switch (c)
     {
         case GLUT_KEY_UP:
-            phi_v = 0;
+            keys['u'] = false;
             break;
         case GLUT_KEY_DOWN:
-            phi_v = 0;
+            keys['o'] = false;
             break;
         case GLUT_KEY_RIGHT:
-            theta_v = 0;
+            keys['r'] = false;
             break;
         case GLUT_KEY_LEFT:
-            theta_v = 0;
+            keys['l'] = false;
             break;    
     }
 }

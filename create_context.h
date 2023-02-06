@@ -13,7 +13,6 @@
 #include <oclutils.hpp>
 #include "point.h"
 
-
 using namespace cl;
 Program program;
 Context context;
@@ -87,39 +86,66 @@ void create_context() {
 	}
 }
 
-void calcAcc(Point points, int N) {
+void calcAcc(Point points, Block blocks, int N) {
     Kernel kernel(program, "acc");
 
-    Buffer buffer_X = Buffer(context, CL_MEM_READ_ONLY, sizeof(double) * N);
-    Buffer buffer_Y = Buffer(context, CL_MEM_READ_ONLY, sizeof(double) * N);
-    Buffer buffer_Z = Buffer(context, CL_MEM_READ_ONLY, sizeof(double) * N);
-    Buffer buffer_AX = Buffer(context, CL_MEM_WRITE_ONLY, sizeof(double) * N);
-    Buffer buffer_AY = Buffer(context, CL_MEM_WRITE_ONLY, sizeof(double) * N);
-    Buffer buffer_AZ = Buffer(context, CL_MEM_WRITE_ONLY, sizeof(double) * N);
+    Buffer buffer_X = Buffer(context, CL_MEM_READ_WRITE, sizeof(double) * N);
+    Buffer buffer_Y = Buffer(context, CL_MEM_READ_WRITE, sizeof(double) * N);
+    Buffer buffer_Z = Buffer(context, CL_MEM_READ_WRITE, sizeof(double) * N);
+    Buffer buffer_VX = Buffer(context, CL_MEM_READ_WRITE, sizeof(double) * N);
+    Buffer buffer_VY = Buffer(context, CL_MEM_READ_WRITE, sizeof(double) * N);
+    Buffer buffer_VZ = Buffer(context, CL_MEM_READ_WRITE, sizeof(double) * N);
+    Buffer buffer_AX = Buffer(context, CL_MEM_READ_WRITE, sizeof(double) * N);
+    Buffer buffer_AY = Buffer(context, CL_MEM_READ_WRITE, sizeof(double) * N);
+    Buffer buffer_AZ = Buffer(context, CL_MEM_READ_WRITE, sizeof(double) * N);
+    Buffer buffer_ABX = Buffer(context, CL_MEM_READ_ONLY, sizeof(int) * blocks.ax.size());
+    Buffer buffer_ABY = Buffer(context, CL_MEM_READ_ONLY, sizeof(int) * blocks.ay.size());
+    Buffer buffer_ABZ = Buffer(context, CL_MEM_READ_ONLY, sizeof(int) * blocks.az.size());
+    Buffer buffer_P = Buffer(context, CL_MEM_READ_ONLY, sizeof(int) * N*(N-1));
     Buffer buffer_M = Buffer(context, CL_MEM_READ_ONLY, sizeof(double) * N);
+    Buffer buffer_bId = Buffer(context, CL_MEM_READ_ONLY, sizeof(int) * N);
 
     queue.enqueueWriteBuffer(buffer_X, CL_TRUE, 0, sizeof(double) * N, points.x);
     queue.enqueueWriteBuffer(buffer_Y, CL_TRUE, 0, sizeof(double) * N, points.y);
     queue.enqueueWriteBuffer(buffer_Z, CL_TRUE, 0, sizeof(double) * N, points.z);
+    queue.enqueueWriteBuffer(buffer_VX, CL_TRUE, 0, sizeof(double) * N, points.vx);
+    queue.enqueueWriteBuffer(buffer_VY, CL_TRUE, 0, sizeof(double) * N, points.vy);
+    queue.enqueueWriteBuffer(buffer_VZ, CL_TRUE, 0, sizeof(double) * N, points.vz);
     queue.enqueueWriteBuffer(buffer_AX, CL_TRUE, 0, sizeof(double) * N, points.ax);
     queue.enqueueWriteBuffer(buffer_AY, CL_TRUE, 0, sizeof(double) * N, points.ay);
     queue.enqueueWriteBuffer(buffer_AZ, CL_TRUE, 0, sizeof(double) * N, points.az);
+    queue.enqueueWriteBuffer(buffer_ABX, CL_TRUE, 0, sizeof(double) * blocks.ax.size(), blocks.ax.data());
+    queue.enqueueWriteBuffer(buffer_ABY, CL_TRUE, 0, sizeof(double) * blocks.ay.size(), blocks.ay.data());
+    queue.enqueueWriteBuffer(buffer_ABZ, CL_TRUE, 0, sizeof(double) * blocks.az.size(), blocks.az.data());
+    queue.enqueueWriteBuffer(buffer_P, CL_TRUE, 0, sizeof(int) * N*(N-1), points.pairs);
     queue.enqueueWriteBuffer(buffer_M, CL_TRUE, 0, sizeof(double) * N, points.m);
+    queue.enqueueWriteBuffer(buffer_bId, CL_TRUE, 0, sizeof(int) * N, points.blockId);
 
     kernel.setArg(0, buffer_X);
     kernel.setArg(1, buffer_Y);
     kernel.setArg(2, buffer_Z);
-    kernel.setArg(3, buffer_AX);
-    kernel.setArg(4, buffer_AY);
-    kernel.setArg(5, buffer_AZ);
-    kernel.setArg(6, buffer_M);
+    kernel.setArg(3, buffer_VX);
+    kernel.setArg(4, buffer_VY);
+    kernel.setArg(5, buffer_VZ);
+    kernel.setArg(6, buffer_AX);
+    kernel.setArg(7, buffer_AY);
+    kernel.setArg(8, buffer_AZ);
+    kernel.setArg(9, buffer_ABX);
+    kernel.setArg(10, buffer_ABY);
+    kernel.setArg(11, buffer_ABZ);
+    kernel.setArg(12, buffer_P);
+    kernel.setArg(13, buffer_M);
+    kernel.setArg(14, buffer_bId);
 
     NDRange _global_(N);
     queue.enqueueNDRangeKernel(kernel, cl::NullRange, _global_, cl::NullRange);
 
-    queue.enqueueReadBuffer(buffer_AX, CL_TRUE, 0, sizeof(double) * N, points.ax);
-    queue.enqueueReadBuffer(buffer_AY, CL_TRUE, 0, sizeof(double) * N, points.ay);
-    queue.enqueueReadBuffer(buffer_AZ, CL_TRUE, 0, sizeof(double) * N, points.az);
+    queue.enqueueReadBuffer(buffer_X, CL_TRUE, 0, sizeof(double) * N, points.x);
+    queue.enqueueReadBuffer(buffer_Y, CL_TRUE, 0, sizeof(double) * N, points.y);
+    queue.enqueueReadBuffer(buffer_Z, CL_TRUE, 0, sizeof(double) * N, points.z);
+    queue.enqueueReadBuffer(buffer_VX, CL_TRUE, 0, sizeof(double) * N, points.vx);
+    queue.enqueueReadBuffer(buffer_VY, CL_TRUE, 0, sizeof(double) * N, points.vy);
+    queue.enqueueReadBuffer(buffer_VZ, CL_TRUE, 0, sizeof(double) * N, points.vz);
 }
 
 
@@ -165,4 +191,31 @@ void calcVelPos(Point points, int N) {
     queue.enqueueReadBuffer(buffer_VX, CL_TRUE, 0, sizeof(double) * N, points.vx);
     queue.enqueueReadBuffer(buffer_VY, CL_TRUE, 0, sizeof(double) * N, points.vy);
     queue.enqueueReadBuffer(buffer_VZ, CL_TRUE, 0, sizeof(double) * N, points.vz);
+}
+
+void calcPairs(Point points, int N) {
+    Kernel kernel(program, "Pairs");
+
+    Buffer buffer_X = Buffer(context, CL_MEM_READ_ONLY, sizeof(double) * N);
+    Buffer buffer_Y = Buffer(context, CL_MEM_READ_ONLY, sizeof(double) * N);
+    Buffer buffer_Z = Buffer(context, CL_MEM_READ_ONLY, sizeof(double) * N);
+    Buffer buffer_P = Buffer(context, CL_MEM_WRITE_ONLY, sizeof(int) * N*(N-1));
+    Buffer buffer_bId = Buffer(context, CL_MEM_READ_ONLY, sizeof(int) * N);
+
+    queue.enqueueWriteBuffer(buffer_X, CL_TRUE, 0, sizeof(double) * N, points.x);
+    queue.enqueueWriteBuffer(buffer_Y, CL_TRUE, 0, sizeof(double) * N, points.y);
+    queue.enqueueWriteBuffer(buffer_Z, CL_TRUE, 0, sizeof(double) * N, points.z);
+    queue.enqueueWriteBuffer(buffer_P, CL_TRUE, 0, sizeof(int) * N*(N-1), points.pairs);
+    queue.enqueueWriteBuffer(buffer_bId, CL_TRUE, 0, sizeof(int) * N, points.blockId);
+
+    kernel.setArg(0, buffer_X);
+    kernel.setArg(1, buffer_Y);
+    kernel.setArg(2, buffer_Z);
+    kernel.setArg(3, buffer_P);
+    kernel.setArg(4, buffer_bId);
+
+    NDRange _global_(N);
+    queue.enqueueNDRangeKernel(kernel, cl::NullRange, _global_, cl::NullRange);
+
+    queue.enqueueReadBuffer(buffer_P, CL_TRUE, 0, sizeof(int) * N*(N-1), points.pairs);
 }

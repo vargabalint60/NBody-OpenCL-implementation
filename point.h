@@ -4,37 +4,16 @@
 #include <CL/cl.h>
 #include <iostream>
 #include <math.h>
+#include <vector>
 
 struct Point {
-    double *x, *y, *z;
-    double *vx, *vy, *vz;
-    double *ax, *ay, *az;
-    double *m;
+    double *x = new double[N]{0}, *y = new double[N]{0}, *z = new double[N]{0};
+    double *vx = new double[N]{0}, *vy = new double[N]{0}, *vz = new double[N]{0};
+    double *ax = new double[N]{0}, *ay = new double[N]{0}, *az = new double[N]{0};
+    double *m = new double[N]{0};
+    int *blockId = new int[N]{0};
+    int *pairs = new int[N*(N-1)]{0};
 
-    Point(int N) {
-        x = new double[N];
-        y = new double[N];
-        z = new double[N];
-        vx = new double[N];
-        vy = new double[N];
-        vz = new double[N];
-        ax = new double[N];
-        ay = new double[N];
-        az = new double[N];
-        m = new double[N];
-        for (int i = 0; i < N; i++) {
-            x[i] = 0.0;
-            y[i] = 0.0;
-            z[i] = 0.0;
-            vx[i] = 0.0;
-            vy[i] = 0.0;
-            vz[i] = 0.0;
-            ax[i] = 0.0;
-            ay[i] = 0.0;
-            az[i] = 0.0;
-            m[i] = 1.0;
-        }
-    }
 };
 
 void initCircle(Point points, int N,int x0,int z0,int r) {
@@ -45,60 +24,18 @@ void initCircle(Point points, int N,int x0,int z0,int r) {
     }
 }
 
-void initPoints(Point points) {
-    points.x[0] = 0.0;
-    points.y[0] = 3.0;
-    points.z[0] = 5.0;
-    points.vx[0] = 1;
-    points.m[0] = 5;
 
-    points.x[1] = 0.0;
-    points.y[1] = 0.0;
-    points.z[1] = 8.0;
-    points.vx[1] = -0.6;
-    points.m[1] = 10;
-
-    points.x[2] = -1.0;
-    points.y[2] = -1.0;
-    points.z[2] = 3.0;
-    points.vx[2] = 0.1;
-    points.m[2] = 20;
-
-    points.x[3] = 4.0;
-    points.y[3] = 3.0;
-    points.z[3] = 5.0;
-    points.vx[3] = 1;
-    points.m[3] = 2;
-
-    points.x[4] = 5.0;
-    points.y[4] = 1.0;
-    points.z[4] = 5.0;
-    points.vx[4] = 0.5;
-    points.m[4] = 5;
-
-    points.x[5] = 0.0;
-    points.y[5] = 0.0;
-    points.z[5] = 0.0;
-    points.vx[5] = 1;
-    points.m[5] = 10;
-
-    points.x[6] = -1.0;
-    points.y[6] = -4.0;
-    points.z[6] = -2.0;
-    points.vx[6] = 0;
-    points.m[6] = 8;
-
-    points.x[7] = -3.0;
-    points.y[7] = -5.0;
-    points.z[7] = -2.0;
-    points.vy[7] = -1;
-    points.m[7] = 5;
-    //points[0] = Point(-5.0, 3.0, 5.0);
-    //points[1] = Point(-5.0, 0.0, 10.0);
+void initRand(Point points, int N) {  //initiate random coords
+    int l = 50;
+    for (int i = 0; i < N; i++) {
+        points.x[i] = (double)(rand()%(l*1000))/1000-25;
+        points.y[i] = (double)(rand()%(l*1000))/1000-25;
+        points.z[i] = (double)(rand()%(l*1000))/1000-25;
+        points.m[i] = rand()%50+1;
+    }
 }
 
-
-void initSolar(Point points) {
+void initSolar(Point points) {  //initiate two solar systems with 22 bodies
     points.x[0] = 0.0;
     points.y[0] = 0.0;
     points.z[0] = 0.0;
@@ -168,13 +105,7 @@ void initSolar(Point points) {
                     sqrt(abs(points.m[5]/(points.z[7] - points.z[5])));
     points.m[7] = 0.3;
 
-    /*points[11].x = 100;
-    points[11].y = 10.0;
-    points[11].z = 10.0;
-    points[11].vx = -10;
-    points[11].m = 1000;*/
-
-    double alpha = 0.6;
+    double alpha = 0;
 
     for (int i = 11; i < 22; i++) {
         points.m[i] = points.m[i-11];
@@ -194,3 +125,106 @@ void initSolar(Point points) {
 
     }
 }
+
+
+struct Block {  //datastructure for the containment of the points
+    std::vector<double> xc, yc, zc;  //geometrical center of cube
+    std::vector<double> xm, ym, zm;  //center of mass
+    std::vector<double> m;
+    std::vector<double> ax;
+    std::vector<double> ay;
+    std::vector<double> az;
+    double l;
+
+    Block(double l) : l(l) {}
+
+    void calcCoords(Point points, int N) {
+        empty();
+        bool in_list;
+        double bx, by, bz;
+        for (int i = 0; i < N; i++) {
+            in_list = false;
+            bx = l/2 + l*calcInd(points.x[i], l);  //center of the cube
+            by = l/2 + l*calcInd(points.y[i], l);  //that contains points[i]
+            bz = l/2 + l*calcInd(points.z[i], l);
+
+            for (int j = 0; j < xc.size(); j++) {
+                if (bx == xc[j] && by == yc[j] && bz == zc[j]) {
+                    in_list = true;
+                    xm[j] += points.m[i]*points.x[i];
+                    ym[j] += points.m[i]*points.y[i];
+                    zm[j] += points.m[i]*points.z[i];
+                    m[j] += points.m[i];
+                    points.blockId[i] = j;
+                    break;
+                }
+            }
+            if (!in_list) {
+                points.blockId[i] = xc.size();
+                xc.push_back(bx);
+                yc.push_back(by);
+                zc.push_back(bz);
+                xm.push_back(points.m[i]*points.x[i]);
+                ym.push_back(points.m[i]*points.y[i]);
+                zm.push_back(points.m[i]*points.z[i]);
+                m.push_back(points.m[i]);
+            }
+        }
+
+        for (int j = 0; j < xc.size(); j++) {
+            xm[j] /= m[j];
+            ym[j] /= m[j];
+            zm[j] /= m[j];
+        }
+
+
+        for (int i = 0; i < xc.size(); i++) {
+            ax.push_back(0);
+            ay.push_back(0);
+            az.push_back(0);
+            for (int j = 0; j < xc.size(); j++) {
+                if (i != j) {
+                    double r_x = xm[i] - xm[j]; 
+                    double r_y = ym[i] - ym[j];
+                    double r_z = zm[i] - zm[j];
+
+                    double rSquared = r_x*r_x + r_y*r_y + r_z*r_z;
+                    double rCubed = rSquared * sqrt(rSquared);
+
+                    if (rSquared > 0.2) {
+                        ax[i] += - m[j] * r_x / rCubed;   //missing G
+                        ay[i] += - m[j] * r_y / rCubed;
+                        az[i] += - m[j] * r_z / rCubed;
+                    }
+                    else {
+                        ax[i] += m[j] * r_x / (5*rCubed); 
+                        ay[i] += m[j] * r_y / (5*rCubed);
+                        az[i] += m[j] * r_z / (5*rCubed);
+                    }
+                }
+            }
+        }
+    }
+
+    void empty() {
+        xc.clear();
+        yc.clear();
+        zc.clear();
+        xm.clear();
+        ym.clear();
+        zm.clear();
+        m.clear();
+        ax.clear();
+        ay.clear();
+        az.clear();
+    }
+
+    template <typename T>
+    int sgn(T x) {
+        return (x < 0) ? -1 : 0;
+    }
+
+    int calcInd(double coord, double l) { 
+        return (int)(coord/l) + sgn(coord); 
+    }
+};

@@ -57,10 +57,14 @@ void control() {
         camera_vx += -sin(theta)*cos(phi);
     }
     if (keys['e']) {
-        camera_vy += 1;
+        camera_vz += -sin(theta)*sin(phi);
+        camera_vy += cos(phi);
+        camera_vx += -cos(theta)*sin(phi);
     }
     if (keys['q']) {
-        camera_vy -= 1;
+        camera_vz += sin(theta)*sin(phi);
+        camera_vy += -cos(phi);
+        camera_vx += cos(theta)*sin(phi);
     }
     camera_x += v*camera_vx/15;
     camera_y += v*camera_vy/15;
